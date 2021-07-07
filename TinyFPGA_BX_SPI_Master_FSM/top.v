@@ -113,8 +113,8 @@ module top (
     localparam  ADC_RANGE_NA = 2;
     localparam  ADC_RANGE_UNKNOWN = 3;
 
-    localparam  AdC_RANGE_LIMIT_LOW = 2100;
-    localparam  AdC_RANGE_LIMIT_HIGH = 220000;
+    localparam  ADC_RANGE_LIMIT_LOW = 2100;
+    localparam  ADC_RANGE_LIMIT_HIGH = 220000;
 
     reg w_adc_master_range_ma = 1;
     reg w_adc_master_range_ua = 0;
@@ -125,10 +125,16 @@ module top (
     reg [3:0] r_adc_master_range = ADC_RANGE_UNKNOWN;
     reg [3:0] r_adc_master_last_range = ADC_RANGE_UNKNOWN;
 
-    // big 40 Byte register meant for storing 10 measured samples for increased throughput created 2 with ability to switch between each as receive/transmit continue
+    // ADC last/currently measured value, used for checking ranges
+    reg [31:0] r_adc_master_last_measured_value = 0;
+
+    // big 40 Byte register meant for storing 10 measured samples for increased throughput created 2 buffers with ability to switch between each as receive/transmit continue
+    //reg [319:0] r_adc_master_tx_buffer_1 = 0;
+    //reg [319:0] r_adc_master_tx_buffer_2 = 0;
     reg [319:0] r_adc_master_tx_buffer_1 = 0;
     reg [319:0] r_adc_master_tx_buffer_2 = 0;
 
+    // small 4 Byte registers for storing current received value from ADC, this register is copied into bug register for sending to mcu
     reg [31:0] r_adc_master_rx_buffer_1 = 0;
     reg [31:0] r_adc_master_rx_buffer_2 = 0;
 
@@ -275,10 +281,10 @@ module top (
     reg w_spi_master_tx_data_ready = 0;
 
     // define spi signals
-    wire w_spi_master_clk;
-    wire w_spi_master_mosi;
-    wire w_spi_master_miso;
-    wire w_spi_master_cs;
+    wire w_spi_master_mcu_clk;
+    wire w_spi_master_mcu_mosi;
+    wire w_spi_master_mcu_miso;
+    wire w_spi_master_mcu_cs;
 
     // indicating data readiness for sending over SPI bus
     reg r_spi_master_data_ready = 0;
@@ -287,7 +293,7 @@ module top (
     reg [5:0] r_spi_master_tx_data_count = 40;
     wire [5:0] w_spi_master_rx_data_count;
 
-    // conters to point in registers
+    // counters to point in registers
     reg [7:0] r_spi_master_tx_counter = 0;
     reg [7:0] r_spi_master_rx_counter = 0;
 
@@ -329,10 +335,10 @@ module top (
 
       // SPI signals
 
-      .o_SPI_Clk(w_spi_master_clk),
-      .i_SPI_MISO(w_spi_master_miso),
-      .o_SPI_MOSI(w_spi_master_mosi),
-      .o_SPI_CS_n(w_spi_master_cs)
+      .o_SPI_Clk(w_spi_master_mcu_clk),
+      .i_SPI_MISO(w_spi_master_mcu_miso),
+      .o_SPI_MOSI(w_spi_master_mcu_mosi),
+      .o_SPI_CS_n(w_spi_master_mcu_cs)
         /*
       .o_SPI_Clk(PIN_2),
       .i_SPI_MISO(PIN_3),
@@ -1191,7 +1197,7 @@ module top (
 
       endcase // end case adc state machine
 
-
+      // Range state machine
       case (r_adc_master_range_state)
 
         ADC_RANGE_STATE_DONE: begin
@@ -1201,6 +1207,7 @@ module top (
 
         ADC_RANGE_STATE_CHECKED:  begin
 
+/*
           case (r_adc_master_rx_reading_counter)
 
             0:  begin
@@ -1324,18 +1331,19 @@ module top (
             end // end case statement
 
             default:  begin
-              /*if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [31:0] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [31:0] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
-              */
+              //if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
+              //  r_adc_master_tx_buffer_2 [31:0] <= r_adc_master_rx_buffer_1 [31:0];
+              //end // end if
+              //else  begin
+              //  r_adc_master_tx_buffer_1 [31:0] <= r_adc_master_rx_buffer_1 [31:0];
+              //end // end else
+
               r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
               w_led_4 <= 1;
             end // end default case statement
 
           endcase // end rx reading counter case
+*/
 
           if(r_adc_master_rx_reading_counter == (ADC_READINGS-1) ) begin
 
@@ -1362,7 +1370,7 @@ module top (
           // range selection in next clock proper range will be applied
 
           // nA to uA
-          if(r_adc_master_last_range == ADC_RANGE_NA && r_adc_master_rx_buffer_1 >= AdC_RANGE_LIMIT_HIGH) begin
+          if(r_adc_master_last_range == ADC_RANGE_NA && r_adc_master_rx_buffer_1 >= ADC_RANGE_LIMIT_HIGH) begin
             r_adc_master_range <= ADC_RANGE_UA;
 
             w_adc_master_range_na <= 0;
@@ -1371,7 +1379,7 @@ module top (
 
           end // end if
           // uA to mA
-          else if(r_adc_master_last_range == ADC_RANGE_UA && r_adc_master_rx_buffer_1 >= AdC_RANGE_LIMIT_HIGH)  begin
+          else if(r_adc_master_last_range == ADC_RANGE_UA && r_adc_master_rx_buffer_1 >= ADC_RANGE_LIMIT_HIGH)  begin
             r_adc_master_range <= ADC_RANGE_MA;
 
             w_adc_master_range_na <= 0;
@@ -1380,7 +1388,7 @@ module top (
 
           end // end if
           // mA to uA
-          else if(r_adc_master_last_range == ADC_RANGE_MA && r_adc_master_rx_buffer_1 <= AdC_RANGE_LIMIT_LOW)  begin
+          else if(r_adc_master_last_range == ADC_RANGE_MA && r_adc_master_rx_buffer_1 <= ADC_RANGE_LIMIT_LOW)  begin
             r_adc_master_range <= ADC_RANGE_UA;
 
             w_adc_master_range_na <= 0;
@@ -1389,7 +1397,7 @@ module top (
 
           end // end if
           // uA to nA
-          else if(r_adc_master_last_range == ADC_RANGE_UA && r_adc_master_rx_buffer_1 <= AdC_RANGE_LIMIT_LOW)  begin
+          else if(r_adc_master_last_range == ADC_RANGE_UA && r_adc_master_rx_buffer_1 <= ADC_RANGE_LIMIT_LOW)  begin
             r_adc_master_range <= ADC_RANGE_NA;
 
             w_adc_master_range_na <= 1;
@@ -1399,6 +1407,9 @@ module top (
           end // end if
           else  begin
             //r_adc_master_range <= ADC_RANGE_MA;
+
+            // if there is no need for change, just save current range for next iteration
+            r_adc_master_range <= r_adc_master_last_range;
 
             //w_adc_master_range_na <= 0;
             //w_adc_master_range_ua <= 0;
@@ -1433,10 +1444,10 @@ module top (
 
 
     // SPI MASTER to MCU
-    assign PIN_2 = w_spi_master_clk;
-    assign PIN_3 = w_spi_master_mosi;
-    assign PIN_4 = w_spi_master_miso;
-    assign PIN_5 = w_spi_master_cs;
+    assign PIN_2 = w_spi_master_mcu_clk;
+    assign PIN_3 = w_spi_master_mcu_mosi;
+    assign PIN_4 = w_spi_master_mcu_miso;
+    assign PIN_5 = w_spi_master_mcu_cs;
 
     // SPI MASTER to ADC
     assign PIN_7 = w_spi_master_adc_rvs;
