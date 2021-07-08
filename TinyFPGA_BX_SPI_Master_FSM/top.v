@@ -107,15 +107,21 @@ module top (
     // *********************** A D C  - RANGE - 3CH *****************************************//
     //***************************************************************************************//
 
+    // adc readings - number of reading before initializing transmission, all buffers must be able to handle x readings before sending
+    // value between 1 to 10 readings
+    localparam  ADC_READINGS = 10;
+
     // define all possible ranges for measuring current
     localparam  ADC_RANGE_MA = 0;
     localparam  ADC_RANGE_UA = 1;
     localparam  ADC_RANGE_NA = 2;
     localparam  ADC_RANGE_UNKNOWN = 3;
 
+    // set range limits low and high in 32bit format
     localparam  ADC_RANGE_LIMIT_LOW = 2100;
     localparam  ADC_RANGE_LIMIT_HIGH = 220000;
 
+    // set by default higher/largest range = mA
     reg w_adc_master_range_ma = 1;
     reg w_adc_master_range_ua = 0;
     reg w_adc_master_range_na = 0;
@@ -131,8 +137,9 @@ module top (
     // big 40 Byte register meant for storing 10 measured samples for increased throughput created 2 buffers with ability to switch between each as receive/transmit continue
     //reg [319:0] r_adc_master_tx_buffer_1 = 0;
     //reg [319:0] r_adc_master_tx_buffer_2 = 0;
-    reg [319:0] r_adc_master_tx_buffer_1 = 0;
-    reg [319:0] r_adc_master_tx_buffer_2 = 0;
+    // big buffer for buffering before starting SPI MCU transfer, size must be equal or greater than number of ADC_READINGS * 4Bytes(one reading sample)
+    reg [7:0] r_adc_master_tx_buffer_1 [ADC_READINGS*4];
+    reg [7:0] r_adc_master_tx_buffer_2 [ADC_READINGS*4];
 
     // small 4 Byte registers for storing current received value from ADC, this register is copied into bug register for sending to mcu
     reg [31:0] r_adc_master_rx_buffer_1 = 0;
@@ -145,6 +152,7 @@ module top (
     localparam  ADC_RX_BUFFER_2 = 1;
 
     // rx, tx buffer selector
+    // for receiving and transmitting data, there are 2 independent buffers selected by selectors further down
     reg r_adc_master_tx_buffer_selector = ADC_TX_BUFFER_2;
     reg r_adc_master_rx_buffer_selector = ADC_RX_BUFFER_2;
 
@@ -161,11 +169,6 @@ module top (
 
     // adc tx byte counter
     reg [7:0] r_adc_master_tx_byte_counter = 0;
-
-    // adc readings - number of reading before initializing transmission
-    // value between 1 to 10 readings
-    localparam  ADC_READINGS = 10;
-
 
     // *********************** A D C  - RANGE - 3CH - E N D *********************************//
     //***************************************************************************************//
@@ -203,11 +206,11 @@ module top (
     reg [2:0] r_spi_master_adc_tx_data_count = 4;
     wire [2:0] w_spi_master_adc_rx_data_count;
 
-    // conters to point in registers
+    // counters to point in registers
     reg [3:0] r_spi_master_adc_tx_counter = 0;
     reg [3:0] r_spi_master_adc_rx_counter = 0;
 
-    // tx data -- 11 22 33 44 bytes
+    // default tx data -- 11 22 33 44 bytes
     reg [31:0] r_spi_master_adc_tx_data = 740365835;
     reg [31:0] r_spi_master_adc_rx_data;
 
@@ -266,7 +269,8 @@ module top (
     parameter SPI_MODE = 0; // CPOL = 0, CPHA = 0 ===> compatible with STM basic settings
     parameter CLKS_PER_HALF_BIT = 16;  // 500 kHz
     parameter CS_CLK_DELAY = 4;  // 25 MHz
-    parameter MAX_BYTES_PER_CS = 40; // send maximum of 4 bytes before changing CS line
+    //parameter MAX_BYTES_PER_CS = 40; // send maximum of 4 bytes before changing CS line
+    parameter MAX_BYTES_PER_CS = ADC_READINGS*4; // send maximum of 4 bytes before changing CS line
 
     // SPI MASTER state machine states
     localparam  SPI_UNKNOWN = 0;      //  state after powering up or during error
@@ -290,14 +294,14 @@ module top (
     reg r_spi_master_data_ready = 0;
 
     // counters to define tx, rx bytes
-    reg [5:0] r_spi_master_tx_data_count = 40;
+    reg [5:0] r_spi_master_tx_data_count = ADC_READINGS*4;
     wire [5:0] w_spi_master_rx_data_count;
 
     // counters to point in registers
     reg [7:0] r_spi_master_tx_counter = 0;
     reg [7:0] r_spi_master_rx_counter = 0;
 
-    // tx data -- 11 22 33 44 bytes
+    // default tx data -- 11 22 33 44 bytes
     reg [31:0] r_spi_master_tx_data = 740365835;
     reg [31:0] r_spi_master_rx_data;
 
@@ -350,8 +354,6 @@ module top (
     // ******************* S P I  - MCU - 8 MHz - E N D *************************************//
     //***************************************************************************************//
 
-
-
     /*
     *   SPI MASTER RX, TX handle cycle
     */
@@ -396,7 +398,7 @@ module top (
         end // end case statement
 
         SPI_READY:  begin
-          r_spi_master_tx_data_count <= 40;
+          r_spi_master_tx_data_count <= ADC_READINGS*4;
           w_led_4 <= 1;
 
           if(r_spi_master_state != SPI_TRANSFERING) begin
@@ -412,581 +414,25 @@ module top (
           // handling sending data
           if( (r_spi_master_tx_dv == 0) && (w_spi_master_tx_ready) ) begin
 
-            // for sensing up to 40 Bytes
-            case (r_spi_master_tx_counter)
-
-              0:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [7:0];
-                  r_temp_tx [7:0] <= 0;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [7:0];
-                  r_temp_tx [7:0] <= 0;
-                end // end else
-
-                r_spi_master_tx_counter <= 1;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              1:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [15:8];
-                  r_temp_tx [7:0] <= 1*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [15:8];
-                  r_temp_tx [7:0] <= 1;
-                end // end else
-
-                r_spi_master_tx_counter <= 2;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              2:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [23:16];
-                  r_temp_tx [7:0] <= 2*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [23:16];
-                  r_temp_tx [7:0] <= 2;
-                end // end else
-
-                r_spi_master_tx_counter <= 3;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              3:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [31:24];
-                  r_temp_tx [7:0] <= 3*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [31:24];
-                  r_temp_tx [7:0] <= 3;
-                end // end else
-
-                r_spi_master_tx_counter <= 4;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              4:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [39:32];
-                  r_temp_tx [7:0] <= 4*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [39:32];
-                  r_temp_tx [7:0] <= 4;
-                end // end else
-
-                r_spi_master_tx_counter <= 5;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              5:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [47:40];
-                  r_temp_tx [7:0] <= 5*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [47:40];
-                  r_temp_tx [7:0] <= 5;
-                end // end else
-
-                r_spi_master_tx_counter <= 6;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              6:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [55:48];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [55:48];
-                end // end else
-
-                r_spi_master_tx_counter <= 7;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              7:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [63:56];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [63:56];
-                end // end else
-
-                r_spi_master_tx_counter <= 8;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              8:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [71:64];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [71:64];
-                end // end else
-
-                r_spi_master_tx_counter <= 9;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              9:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [79:72];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [79:72];
-                end // end else
-
-                r_spi_master_tx_counter <= 10;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              10:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [87:80];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [87:80];
-                end // end else
-
-                r_spi_master_tx_counter <= 11;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              11:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [95:88];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [95:88];
-                end // end else
-
-                r_spi_master_tx_counter <= 12;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              12:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [103:96];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [103:96];
-                end // end else
-
-                r_spi_master_tx_counter <= 13;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              13:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [111:104];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [111:104];
-                end // end else
-
-                r_spi_master_tx_counter <= 14;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              14:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [119:112];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [119:112];
-                end // end else
-
-                r_spi_master_tx_counter <= 15;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              15:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [127:120];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [127:120];
-                end // end else
-
-                r_spi_master_tx_counter <= 16;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              16:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [135:128];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [135:128];
-                end // end else
-
-                r_spi_master_tx_counter <= 17;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              17:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [143:136];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [143:136];
-                end // end else
-
-                r_spi_master_tx_counter <= 18;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              18:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [151:144];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [151:144];
-                end // end else
-
-                r_spi_master_tx_counter <= 19;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              19:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [159:152];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [159:152];
-                end // end else
-
-                r_spi_master_tx_counter <= 20;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              20:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [167:160];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [167:160];
-                end // end else
-
-                r_spi_master_tx_counter <= 21;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              21:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [175:168];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [175:168];
-                end // end else
-
-                r_spi_master_tx_counter <= 22;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              22:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [183:176];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [183:176];
-                end // end else
-
-                r_spi_master_tx_counter <= 23;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              23:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [191:184];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [191:184];
-                end // end else
-
-                r_spi_master_tx_counter <= 24;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              24:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [199:192];
-                end // end if
-                else  begin
-                  r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [199:192];
-                end // end else
-
-                r_spi_master_tx_counter <= 25;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              25:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [207:200];
-                  r_temp_tx [7:0] <= 26*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [207:200];
-                  r_temp_tx [7:0] <= 26;
-                end // end else
-
-                r_spi_master_tx_counter <= 26;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              26:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [215:208];
-                  r_temp_tx [7:0] <= 27*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [215:208];
-                  r_temp_tx [7:0] <= 27;
-                end // end else
-
-                r_spi_master_tx_counter <= 27;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              27:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [223:216];
-                  r_temp_tx [7:0] <= 28*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [223:216];
-                  r_temp_tx [7:0] <= 28;
-                end // end else
-
-                r_spi_master_tx_counter <= 28;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              28:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [231:224];
-                  r_temp_tx [7:0] <= 29*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [231:224];
-                  r_temp_tx [7:0] <= 29;
-                end // end else
-
-                r_spi_master_tx_counter <= 29;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              29:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [239:232];
-                  r_temp_tx [7:0] <= 30*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [239:232];
-                  r_temp_tx [7:0] <= 30;
-                end // end else
-
-                r_spi_master_tx_counter <= 30;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              30:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [247:240];
-                  r_temp_tx [7:0] <= 31*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [247:240];
-                  r_temp_tx [7:0] <= 31;
-                end // end else
-
-                r_spi_master_tx_counter <= 31;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              31:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [255:248];
-                  r_temp_tx [7:0] <= 32*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [255:248];
-                  r_temp_tx [7:0] <= 32;
-                end // end else
-
-                r_spi_master_tx_counter <= 32;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              32:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [263:256];
-                  r_temp_tx [7:0] <= 33*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [263:256];
-                  r_temp_tx [7:0] <= 33;
-                end // end else
-
-                r_spi_master_tx_counter <= 33;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              33:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [271:264];
-                  r_temp_tx [7:0] <= 34*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [271:264];
-                  r_temp_tx [7:0] <= 34;
-                end // end else
-
-                r_spi_master_tx_counter <= 34;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              34:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [279:272];
-                  r_temp_tx [7:0] <= 35*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [279:272];
-                  r_temp_tx [7:0] <= 35;
-                end // end else
-
-                r_spi_master_tx_counter <= 35;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              35:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [287:280];
-                  r_temp_tx [7:0] <= 36*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [287:280];
-                  r_temp_tx [7:0] <= 36;
-                end // end else
-
-                r_spi_master_tx_counter <= 36;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              36:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [295:288];
-                  r_temp_tx [7:0] <= 37*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [295:288];
-                  r_temp_tx [7:0] <= 37;
-                end // end else
-
-                r_spi_master_tx_counter <= 37;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              37:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [303:296];
-                  r_temp_tx [7:0] <= 38*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [303:296];
-                  r_temp_tx [7:0] <= 38;
-                end // end else
-
-                r_spi_master_tx_counter <= 38;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              38:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [311:304];
-                  r_temp_tx [7:0] <= 39*2;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [311:304];
-                  r_temp_tx [7:0] <= 39;
-                end // end else
-
-                r_spi_master_tx_counter <= 39;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              39:  begin // end case statement
-                if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [319:312];
-                  r_temp_tx [7:0] <= 80;
-                end // end if
-                else  begin
-                  //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [319:312];
-                  r_temp_tx [7:0] <= 40;
-
-                end // end else
-
-                r_spi_master_tx_counter <= 40;
-                //r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-                r_spi_master_tx_dv <= 1;
-              end // end case statement
-
-              default:
-                r_spi_master_state <= SPI_INITIALIZED;
-              /*
-              default:  begin
-                r_spi_master_state <= SPI_INITIALIZED;
-                r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
-              end // end default case statement
-              */
-            endcase // end case TX
+            // sending bytes to MCU, tx counter selects which byte is send
+            if( (r_spi_master_tx_counter >= 0) && (r_spi_master_tx_counter < (ADC_READINGS*4) ) ) begin
+              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
+                //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [r_spi_master_tx_counter];
+                r_temp_tx [7:0] <= r_spi_master_tx_counter*2;
+              end // end if
+              else  begin
+                //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [r_spi_master_tx_counter];
+                r_temp_tx [7:0] <= r_spi_master_tx_counter;
+              end // end else
+
+              //r_spi_master_tx_counter <= 1;
+              r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
+              r_spi_master_tx_dv <= 1;
+
+            end // end if
+            else begin
+              r_spi_master_state <= SPI_INITIALIZED;
+            end // end else
 
           end // end if
           else begin
@@ -1031,8 +477,6 @@ module top (
         r_adc_master_conversion <= 1;
         r_cycle_counter <= 0;
       end // end if
-
-
 
 
       // ADC state machine
@@ -1171,14 +615,18 @@ module top (
 
             //r_spi_master_tx_data <= r_spi_master_adc_rx_data;
 
-            //r_adc_master_rx_buffer_1 [31:0] <= (r_spi_master_adc_rx_data [23:16] >> 6) | (r_spi_master_adc_rx_data [15:8] << 2) | (r_spi_master_adc_rx_data [7:0] << 10);
+            r_adc_master_rx_buffer_1 <= (r_spi_master_adc_rx_data [23:16] >> 6) | (r_spi_master_adc_rx_data [15:8] << 2) | (r_spi_master_adc_rx_data [7:0] << 10);
 
+            // in case of 2 buffer for instant ADC measurements
+            // currently not used as it complicates things further more and
+            /*
             if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
               r_adc_master_rx_buffer_2 <= (r_spi_master_adc_rx_data [23:16] >> 6) | (r_spi_master_adc_rx_data [15:8] << 2) | (r_spi_master_adc_rx_data [7:0] << 10);
             end // end if
             else if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_2)  begin
               r_adc_master_rx_buffer_1 <= (r_spi_master_adc_rx_data [23:16] >> 6) | (r_spi_master_adc_rx_data [15:8] << 2) | (r_spi_master_adc_rx_data [7:0] << 10);
             end // end if
+            */
 
             //w_spi_master_tx_data_ready <= 1;
             r_adc_master_state <= ADC_READY;
@@ -1207,144 +655,31 @@ module top (
 
         ADC_RANGE_STATE_CHECKED:  begin
 
-/*
-          case (r_adc_master_rx_reading_counter)
+          if ( (r_adc_master_rx_reading_counter >= 0) && (r_adc_master_rx_reading_counter <= ADC_READINGS-1) )  begin
 
-            0:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [31:0] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [31:0] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
+            if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
+              r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
+              r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4 + 1] <= r_adc_master_rx_buffer_1 [23:16];
+              r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4 + 2] <= r_adc_master_rx_buffer_1 [15:8];
+              r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4 + 3] <= r_adc_master_rx_buffer_1 [7:0];
+            end // end if
+            else  begin
+              r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
+              r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4 + 1] <= r_adc_master_rx_buffer_1 [23:16];
+              r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4 + 2] <= r_adc_master_rx_buffer_1 [15:8];
+              r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4 + 3] <= r_adc_master_rx_buffer_1 [7:0];
+            end // end else
 
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 1;
-            end // end case statement
+            r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
+            //r_adc_master_rx_reading_counter <= 1;
+          end // end if
+          else  begin
 
-            1:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [63:32] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [63:32] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
+            r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
+            w_led_4 <= 1;
+          end // end else
 
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 2;
-            end // end case statement
-
-            2:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [95:64] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [95:64] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
-
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 3;
-            end // end case statement
-
-            3:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [127:96] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [127:96] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
-
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 4;
-            end // end case statement
-
-            4:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [159:128] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [159:128] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
-
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 5;
-            end // end case statement
-
-            5:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [191:160] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [191:160] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
-
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 6;
-            end // end case statement
-
-            6:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [223:192] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [223:192] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
-
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 7;
-            end // end case statement
-
-            7:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [255:224] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [255:224] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
-
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 8;
-            end // end case statement
-
-            8:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [287:256] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [287:256] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
-
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 9;
-            end // end case statement
-
-            9:  begin
-              if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                r_adc_master_tx_buffer_2 [319:288] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end if
-              else  begin
-                r_adc_master_tx_buffer_1 [319:288] <= r_adc_master_rx_buffer_1 [31:0];
-              end // end else
-
-              //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              r_adc_master_rx_reading_counter <= 10;
-            end // end case statement
-
-            default:  begin
-              //if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-              //  r_adc_master_tx_buffer_2 [31:0] <= r_adc_master_rx_buffer_1 [31:0];
-              //end // end if
-              //else  begin
-              //  r_adc_master_tx_buffer_1 [31:0] <= r_adc_master_rx_buffer_1 [31:0];
-              //end // end else
-
-              r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
-              w_led_4 <= 1;
-            end // end default case statement
-
-          endcase // end rx reading counter case
-*/
-
+          // checking for full tx buffer based on reading counter, then it changes buffer for new readings and changes tx_data_ready flag, so data will be send to MCU
           if(r_adc_master_rx_reading_counter == (ADC_READINGS-1) ) begin
 
             if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
@@ -1355,6 +690,7 @@ module top (
             end // end else
 
             r_adc_master_rx_reading_counter <= 0;
+            //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
 
             w_spi_master_tx_data_ready <= 1;
 
