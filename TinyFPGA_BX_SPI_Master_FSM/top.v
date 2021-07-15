@@ -111,6 +111,10 @@ module top (
     // value between 1 to 10 readings
     localparam  ADC_READINGS = 10;
 
+    // these addresses needs to be in first byte in receive buffer followed by command byte and then actual data with size up to 4 bytes
+    localparam  FPGA_ADDR = 85; // 0x55 01010101
+    localparam  ADC_ADDR = 170; // 0xAA 10101010
+
     // define all possible ranges for measuring current
     localparam  ADC_RANGE_MA = 0;
     localparam  ADC_RANGE_UA = 1;
@@ -126,6 +130,9 @@ module top (
     reg w_adc_master_range_ua = 0;
     reg w_adc_master_range_na = 0;
 
+    // status flag to indicate adc correctly configured
+    reg r_adc_master_configured = 0;
+
 
     // ADC range state reg for current range and previos range
     reg [3:0] r_adc_master_range = ADC_RANGE_UNKNOWN;
@@ -138,8 +145,8 @@ module top (
     //reg [319:0] r_adc_master_tx_buffer_1 = 0;
     //reg [319:0] r_adc_master_tx_buffer_2 = 0;
     // big buffer for buffering before starting SPI MCU transfer, size must be equal or greater than number of ADC_READINGS * 4Bytes(one reading sample)
-    reg [7:0] r_adc_master_tx_buffer_1 [ADC_READINGS*4];
-    reg [7:0] r_adc_master_tx_buffer_2 [ADC_READINGS*4];
+    reg [7:0] r_adc_master_tx_buffer_1 [0:ADC_READINGS*4];
+    reg [7:0] r_adc_master_tx_buffer_2 [0:40];
 
     // small 4 Byte registers for storing current received value from ADC, this register is copied into bug register for sending to mcu
     reg [31:0] r_adc_master_rx_buffer_1 = 0;
@@ -294,6 +301,7 @@ module top (
     reg r_spi_master_data_ready = 0;
 
     // counters to define tx, rx bytes
+    // size allocation must be adjusted according to adc readings to closes higher number of bits
     reg [5:0] r_spi_master_tx_data_count = ADC_READINGS*4;
     wire [5:0] w_spi_master_rx_data_count;
 
@@ -417,12 +425,12 @@ module top (
             // sending bytes to MCU, tx counter selects which byte is send
             if( (r_spi_master_tx_counter >= 0) && (r_spi_master_tx_counter < (ADC_READINGS*4) ) ) begin
               if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-                //r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [r_spi_master_tx_counter];
-                r_temp_tx [7:0] <= r_spi_master_tx_counter*2;
+                r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [r_spi_master_tx_counter];
+                //r_temp_tx [7:0] <= r_spi_master_tx_counter*2;
               end // end if
               else  begin
-                //r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [r_spi_master_tx_counter];
-                r_temp_tx [7:0] <= r_spi_master_tx_counter;
+                r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [r_spi_master_tx_counter];
+                //r_temp_tx [7:0] <= r_spi_master_tx_counter;
               end // end else
 
               //r_spi_master_tx_counter <= 1;
@@ -492,6 +500,8 @@ module top (
 
             r_spi_master_adc_tx_data_count <= 0;
 
+            r_adc_master_configured <= 0;
+
             r_adc_master_state <= ADC_READY;
 
             end // end else
@@ -501,6 +511,13 @@ module top (
         ADC_READY:  begin
           r_spi_master_adc_tx_counter <= 0;
           r_spi_master_adc_rx_counter <= 0;
+
+          if (r_adc_master_configured == 0) begin
+            r_spi_master_adc_tx_data [31:0] = 3490971659;   // ADC config 1,25x uni directional 0xD0 0x14 0x00 0x0B
+          end
+          else  begin
+            r_spi_master_adc_tx_data [31:0] = 0;
+          end
 
           r_spi_master_adc_tx_data_count <= 4;
 
@@ -562,35 +579,41 @@ module top (
           // handling sending data
           if( (r_spi_master_adc_tx_dv == 0) && (w_spi_master_adc_tx_ready) ) begin
 
-            // for sensing up to 4 Bytes
+            // for sending up to 4 Bytes
             case (r_spi_master_adc_tx_counter)
 
               0:  begin // end case statement
-                r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [7:0];
+                r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [31:24];
                 //r_spi_master_adc_tx_counter <= 1;
                 r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
                 r_spi_master_adc_tx_dv <= 1;
               end // end case statement
 
               1:  begin
-                r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [15:8];
+                r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [23:16];
                 //r_spi_master_adc_tx_counter <= 2;
                 r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
                 r_spi_master_adc_tx_dv <= 1;
               end // end case statement
 
               2:  begin
-                r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [23:16];
+                r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [15:8];
                 //r_spi_master_adc_tx_counter <= 3;
                 r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
                 r_spi_master_adc_tx_dv <= 1;
               end // end case statement
 
               3:  begin
-                r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [31:24];
+                r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [7:0];
                 //r_spi_master_adc_tx_counter <= 4;
                 r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
                 r_spi_master_adc_tx_dv <= 1;
+
+                // finish sending config data
+                if (r_adc_master_configured == 0) begin
+                  r_adc_master_configured <= 1;
+                end
+
               end // end case statement
 
               // overflow --> go back to being ready for new conversion cycle
@@ -655,27 +678,54 @@ module top (
 
         ADC_RANGE_STATE_CHECKED:  begin
 
-          if ( (r_adc_master_rx_reading_counter >= 0) && (r_adc_master_rx_reading_counter <= ADC_READINGS-1) )  begin
+          if ( (r_adc_master_rx_reading_counter >= 0) && (r_adc_master_rx_reading_counter < ADC_READINGS) )  begin
+            /*
+            r_adc_master_tx_buffer_2 [1] <= 1;
+            r_adc_master_tx_buffer_2 [2] <= 0;
+            r_adc_master_tx_buffer_2 [3] <= 3;
+            r_adc_master_tx_buffer_2 [4] <= 0;
+            r_adc_master_tx_buffer_2 [5] <= 5;
+            r_adc_master_tx_buffer_2 [6] <= 0;
+            r_adc_master_tx_buffer_2 [7] <= 7;
+            r_adc_master_tx_buffer_2 [8] <= 0;
+            r_adc_master_tx_buffer_2 [9] <= 9;
+            r_adc_master_tx_buffer_2 [10] <= 0;
 
+            r_adc_master_tx_buffer_1 [0] <= 0;
+            r_adc_master_tx_buffer_2 [1] <= 0;
+            r_adc_master_tx_buffer_1 [2] <= 2;
+            r_adc_master_tx_buffer_2 [3] <= 0;
+            r_adc_master_tx_buffer_1 [4] <= 4;
+            r_adc_master_tx_buffer_2 [5] <= 0;
+            r_adc_master_tx_buffer_1 [6] <= 6;
+            r_adc_master_tx_buffer_2 [7] <= 0;
+            r_adc_master_tx_buffer_1 [8] <= 8;
+            r_adc_master_tx_buffer_2 [9] <= 0;
+            */
             if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-              r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
+              r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_reading_counter;
+              //r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
               r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4 + 1] <= r_adc_master_rx_buffer_1 [23:16];
               r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4 + 2] <= r_adc_master_rx_buffer_1 [15:8];
               r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4 + 3] <= r_adc_master_rx_buffer_1 [7:0];
             end // end if
             else  begin
-              r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
+              r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_reading_counter*2;
+              //r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
               r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4 + 1] <= r_adc_master_rx_buffer_1 [23:16];
               r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4 + 2] <= r_adc_master_rx_buffer_1 [15:8];
               r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4 + 3] <= r_adc_master_rx_buffer_1 [7:0];
             end // end else
 
             r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
+            // reset buffer so it won't interfere with range checking as it only expects measured data without range information
+            //r_adc_master_rx_buffer_1 <= 0;
             //r_adc_master_rx_reading_counter <= 1;
           end // end if
           else  begin
 
-            r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
+            //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
+            r_adc_master_rx_buffer_1 <= 0;
             w_led_4 <= 1;
           end // end else
 
@@ -750,6 +800,9 @@ module top (
             //w_adc_master_range_na <= 0;
             //w_adc_master_range_ua <= 0;
             //w_adc_master_range_ma <= 1;
+            //r_adc_master_rx_buffer_1 [2:2] <= 1;
+            //r_adc_master_rx_buffer_1 [1:1] <= 1;
+            //r_adc_master_rx_buffer_1 [0:0] <= 1;
 
           end // end else
 
