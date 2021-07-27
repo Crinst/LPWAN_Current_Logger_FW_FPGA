@@ -23,7 +23,11 @@ module top (
 
     output PIN_14,  // mA range
     output PIN_15,  // uA range
-    output PIN_16   // nA range
+    output PIN_16,   // nA range
+    output PIN_17,  // mA range AS
+    output PIN_18,  // uA range AS
+    output PIN_19   // nA range AS
+
 
 );
     // drive USB pull-up resistor to '0' to disable USB
@@ -49,19 +53,20 @@ module top (
 
     // *********************** P L L - 240 MHz **********************************************//
     //***************************************************************************************//
-    /*
+
     wire w_clk_240mhz;
     wire w_clk_240mhz_locked;   // checking for clock phase locking
 
     // setting up PLL for 240 MHz main clock
     pll pll240( .clock_in(CLK), .clock_out(w_clk_240mhz), .locked(w_clk_240mhz_locked) );
-    */
+
     // *********************** P L L - 240 MHz - E N D **************************************//
     //***************************************************************************************//
 
 
     // ****************************** L E D *************************************************//
     //******************************* 16 MHz ************************************************//
+    /*
     reg [31:0] r_blink_prescale = 23; // approx. 8 mil. equals to approx 0.95 Hz for 16MHz main clock
     reg r_blink_enable = 1'b0;  // out enable, default turned off
     wire w_blink_output;
@@ -77,13 +82,13 @@ module top (
     end
 
     assign LED = w_blink_output;
-
+*/
     // ****************************** L E D - E N D *****************************************//
     //******************************* 16 MHz ************************************************//
 
     // ****************************** L E D *************************************************//
     //******************************* 240 MHz ***********************************************//
-    /*
+
     reg [31:0] r_blink_prescale_2 = 27; // approx. 134 mil. equals to approx 0.95 Hz for 240MHz main clock
     reg r_blink_enable_2 = 1'b0;  // out enable, default turned off
     wire w_blink_output_2;
@@ -98,8 +103,8 @@ module top (
       end
     end
 
-    assign PIN_1 = w_blink_output_2;
-    */
+    //assign PIN_1 = w_blink_output_2;
+    assign LED = w_blink_output_2;
 
     // ****************************** L E D - E N D *****************************************//
     //******************************* 240 MHz ***********************************************//
@@ -109,7 +114,7 @@ module top (
 
     // adc readings - number of reading before initializing transmission, all buffers must be able to handle x readings before sending
     // value between 1 to 10 readings
-    localparam  ADC_READINGS = 10;
+    localparam  ADC_READINGS = 30;
 
     // these addresses needs to be in first byte in receive buffer followed by command byte and then actual data with size up to 4 bytes
     localparam  FPGA_ADDR = 85; // 0x55 01010101
@@ -135,8 +140,8 @@ module top (
 
 
     // ADC range state reg for current range and previos range
-    reg [3:0] r_adc_master_range = ADC_RANGE_UNKNOWN;
-    reg [3:0] r_adc_master_last_range = ADC_RANGE_UNKNOWN;
+    reg [3:0] r_adc_master_range = ADC_RANGE_MA;
+    reg [3:0] r_adc_master_last_range = ADC_RANGE_MA;
 
     // ADC last/currently measured value, used for checking ranges
     reg [31:0] r_adc_master_last_measured_value = 0;
@@ -146,7 +151,7 @@ module top (
     //reg [319:0] r_adc_master_tx_buffer_2 = 0;
     // big buffer for buffering before starting SPI MCU transfer, size must be equal or greater than number of ADC_READINGS * 4Bytes(one reading sample)
     reg [7:0] r_adc_master_tx_buffer_1 [0:ADC_READINGS*4];
-    reg [7:0] r_adc_master_tx_buffer_2 [0:40];
+    reg [7:0] r_adc_master_tx_buffer_2 [0:ADC_READINGS*4];
 
     // small 4 Byte registers for storing current received value from ADC, this register is copied into bug register for sending to mcu
     reg [31:0] r_adc_master_rx_buffer_1 = 0;
@@ -185,8 +190,8 @@ module top (
 
     // define testing SPI Interface
     parameter SPI_MODE_ADC = 0; // CPOL = 0, CPHA = 0 ===> compatible with STM basic settings
-    parameter CLKS_PER_HALF_BIT_ADC = 16;  // 2 MHz
-    parameter CS_CLK_DELAY_ADC = 4;  // 25 MHz
+    parameter CLKS_PER_HALF_BIT_ADC = 6;  // select 3=10MHz for 60MHz clk source
+    parameter CS_CLK_DELAY_ADC = 8;  // select 4 for 60MHz clk source
     parameter MAX_BYTES_PER_CS_ADC = 4; // send maximum of 4 bytes before changing CS line
 
     // ADC conversion state machine states
@@ -231,6 +236,10 @@ module top (
     reg [7:0] r_temp_adc_tx = 12;
     wire [7:0] w_temp_adc_rx;
 
+    reg [7:0] r_adc_sample_delay = 0;
+    localparam  ADC_SAMPLE_DELAY = 90; // needed approx. 666ns based on ADS8691 datasheet; select 45=750ns for 60MHz clk source
+    localparam  ADC_CS_CONVS_DELAY = 20; // added so cs line will be Dig. LOW before conversion start; select 10=166,67ns for 60MHz clk source
+
     SPI_Master_With_Single_CS
     #(
       .SPI_MODE(SPI_MODE_ADC),
@@ -240,7 +249,7 @@ module top (
     ) spiMasterADC
     (
       .i_Rst_L(r_spi_master_adc_reset),
-      .i_Clk(CLK),
+      .i_Clk(w_clk_240mhz),
 
       // MOSI
       .i_TX_Count(r_spi_master_adc_tx_data_count),
@@ -274,8 +283,8 @@ module top (
     //***************************************************************************************//
     // define testing SPI Interface
     parameter SPI_MODE = 0; // CPOL = 0, CPHA = 0 ===> compatible with STM basic settings
-    parameter CLKS_PER_HALF_BIT = 16;  // 500 kHz
-    parameter CS_CLK_DELAY = 4;  // 25 MHz
+    parameter CLKS_PER_HALF_BIT = 6;  // select 3=10MHz for 60MHz clk source
+    parameter CS_CLK_DELAY = 50;  // select 25 for 60MHz clk source
     //parameter MAX_BYTES_PER_CS = 40; // send maximum of 4 bytes before changing CS line
     parameter MAX_BYTES_PER_CS = ADC_READINGS*4; // send maximum of 4 bytes before changing CS line
 
@@ -302,12 +311,12 @@ module top (
 
     // counters to define tx, rx bytes
     // size allocation must be adjusted according to adc readings to closes higher number of bits
-    reg [5:0] r_spi_master_tx_data_count = ADC_READINGS*4;
-    wire [5:0] w_spi_master_rx_data_count;
+    reg [6:0] r_spi_master_tx_data_count = ADC_READINGS*4;
+    wire [6:0] w_spi_master_rx_data_count;
 
     // counters to point in registers
-    reg [7:0] r_spi_master_tx_counter = 0;
-    reg [7:0] r_spi_master_rx_counter = 0;
+    reg [6:0] r_spi_master_tx_counter = 0;
+    reg [6:0] r_spi_master_rx_counter = 0;
 
     // default tx data -- 11 22 33 44 bytes
     reg [31:0] r_spi_master_tx_data = 740365835;
@@ -332,7 +341,7 @@ module top (
     ) spiMasterCS
     (
       .i_Rst_L(r_spi_master_reset),
-      .i_Clk(CLK),
+      .i_Clk(w_clk_240mhz),
 
       // MOSI
       .i_TX_Count(r_spi_master_tx_data_count),
@@ -365,7 +374,7 @@ module top (
     /*
     *   SPI MASTER RX, TX handle cycle
     */
-    always @ (posedge CLK) begin
+    always @ (posedge w_clk_240mhz) begin
 
       // simple cycle counter 32b
       r_cycle_counter <= r_cycle_counter + 1;
@@ -479,8 +488,10 @@ module top (
 
 
 
-      // start spi transfer after 1000 clks, approx. 62,5 us
-      if(r_cycle_counter[20] ) begin
+      // start spi transfer after 1mil clks, approx. 62,5 ms
+      // 60MHz clock approx. 16,67 ns per clock >>> 100 us is about 6000 clocks
+
+      if(r_cycle_counter >= 12000 ) begin
         //w_spi_master_tx_data_ready <= 1;
         r_adc_master_conversion <= 1;
         r_cycle_counter <= 0;
@@ -530,14 +541,31 @@ module top (
         ADC_SAMPLING:  begin
 
           if(r_adc_master_conversion) begin
-            r_adc_master_conversion <= 0;
+            //r_adc_master_conversion <= 0;
             r_spi_master_adc_cs_control <= 0;
             r_spi_master_adc_convst <= 1;
+
+            if(r_adc_sample_delay >= ADC_CS_CONVS_DELAY)  begin
+              r_adc_master_conversion <= 0;
+              r_adc_sample_delay <= 0;
+            end // end if
+            else  begin
+              r_adc_sample_delay <= r_adc_sample_delay + 1;
+            end // end else
+
           end // end if
           else  begin
             r_spi_master_adc_convst <= 0;
             r_spi_master_adc_cs_control <= 1;
-            r_adc_master_state <= ADC_ACQUIRING;
+
+            if(r_adc_sample_delay >= ADC_SAMPLE_DELAY)  begin
+              r_adc_master_state <= ADC_ACQUIRING;
+              r_adc_sample_delay <= 0;
+            end // end if
+            else  begin
+              r_adc_sample_delay <= r_adc_sample_delay + 1;
+            end // end else
+
           end // end else
 
 
@@ -633,10 +661,8 @@ module top (
           end // end else
           // end ADC TX
 
-          if( (r_spi_master_adc_tx_data_count == r_spi_master_adc_rx_counter) && (r_spi_master_state == SPI_INITIALIZED) )  begin
-          //if( ( (r_spi_master_adc_tx_counter-1) == w_spi_master_adc_rx_data_count) && (r_spi_master_state == SPI_INITIALIZED) )  begin
-
-            //r_spi_master_tx_data <= r_spi_master_adc_rx_data;
+          //if( (r_spi_master_adc_tx_data_count == r_spi_master_adc_rx_counter) && (r_spi_master_state == SPI_INITIALIZED) )  begin
+          if( (r_spi_master_adc_tx_data_count == r_spi_master_adc_rx_counter) && (r_spi_master_adc_rx_counter == 4) )  begin
 
             r_adc_master_rx_buffer_1 <= (r_spi_master_adc_rx_data [23:16] >> 6) | (r_spi_master_adc_rx_data [15:8] << 2) | (r_spi_master_adc_rx_data [7:0] << 10);
 
@@ -703,15 +729,15 @@ module top (
             r_adc_master_tx_buffer_2 [9] <= 0;
             */
             if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
-              r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_reading_counter;
-              //r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
+              //r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_reading_counter;
+              r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
               r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4 + 1] <= r_adc_master_rx_buffer_1 [23:16];
               r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4 + 2] <= r_adc_master_rx_buffer_1 [15:8];
               r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4 + 3] <= r_adc_master_rx_buffer_1 [7:0];
             end // end if
             else  begin
-              r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_reading_counter*2;
-              //r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
+              //r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_reading_counter*2;
+              r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
               r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4 + 1] <= r_adc_master_rx_buffer_1 [23:16];
               r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4 + 2] <= r_adc_master_rx_buffer_1 [15:8];
               r_adc_master_tx_buffer_1 [r_adc_master_rx_reading_counter*4 + 3] <= r_adc_master_rx_buffer_1 [7:0];
@@ -846,10 +872,15 @@ module top (
     assign PIN_12 = (w_spi_master_adc_cs && r_spi_master_adc_cs_control);
     //assign PIN_13 = r_spi_master_adc_convst;
 
-    // ADC RANGE
+    // ADC RANGE - Power Transistor
     assign PIN_14 = w_adc_master_range_ma;  // mA range
     assign PIN_15 = w_adc_master_range_ua;  // uA range
-    assign PIN_16 = w_adc_master_range_na;   // nA range
+    assign PIN_16 = w_adc_master_range_na;  // nA range
+
+    // ADC RANGE - Analog Switch
+    assign PIN_17 = !w_adc_master_range_ma;  // mA range AS
+    assign PIN_18 = !w_adc_master_range_ua;  // uA range AS
+    assign PIN_19 = !w_adc_master_range_na;  // nA range AS
 
     // TEST OUTPUT FOR INDICATING INTERNAL STATES
     /*assign PIN_10 = w_led_1;
@@ -867,6 +898,6 @@ module top (
     assign PIN_13 = w_spi_master_tx_data_ready;
     //assign PIN_12 = r_spi_master_adc_tx_dv;
 
-    assign PIN_1 = CLK;
+    assign PIN_1 = w_clk_240mhz;
 
 endmodule
