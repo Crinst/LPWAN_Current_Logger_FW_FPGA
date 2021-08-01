@@ -7,170 +7,92 @@ Info: max_span_hack is enabled: estimate is conservative.
 Report for critical path:
 -------------------------
 
-        lc40_20_15_0 (LogicCell40) [clk] -> lcout: 0.896 ns
-     0.896 ns net_78618 (blink_counter[24])
-        t468 (LocalMux) I -> O: 0.486 ns
-        inmux_21_16_86960_86970 (InMux) I -> O: 0.382 ns
-        lc40_21_16_0 (LogicCell40) in1 -> carryout: 0.382 ns
-     2.147 ns t179
-        lc40_21_16_1 (LogicCell40) carryin -> carryout: 0.186 ns
-     2.333 ns net_86974 ($abc$31931$n177$2)
-        inmux_21_16_86974_86984 (InMux) I -> O: 0.382 ns
-        lc40_21_16_2 (LogicCell40) in3 -> lcout: 0.465 ns
-     3.180 ns net_82820 ($abc$31931$n177)
-        t578 (LocalMux) I -> O: 0.486 ns
-        inmux_20_16_82877_82918 (InMux) I -> O: 0.382 ns
-        t170 (CascadeMux) I -> O: 0.000 ns
-        lc40_20_16_4 (LogicCell40) in2 -> lcout: 0.558 ns
-     4.607 ns net_78745 ($abc$31931$n85_1)
-        odrv_20_16_78745_78766 (Odrv4) I -> O: 0.548 ns
-        t486 (LocalMux) I -> O: 0.486 ns
-        inmux_20_18_83113_83180 (InMux) I -> O: 0.382 ns
-        lc40_20_18_7 (LogicCell40) in0 -> lcout: 0.662 ns
-     6.685 ns net_78994 ($abc$31931$n69)
-        odrv_20_18_78994_78890 (Odrv4) I -> O: 0.548 ns
-        t571 (LocalMux) I -> O: 0.486 ns
-        inmux_19_17_78916_78945 (InMux) I -> O: 0.382 ns
-        lc40_19_17_1 (LogicCell40) in1 -> carryout: 0.382 ns
-     8.483 ns net_78943 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[4]$2)
-        lc40_19_17_2 (LogicCell40) carryin -> carryout: 0.186 ns
-     8.669 ns net_78949 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[5]$2)
-        lc40_19_17_3 (LogicCell40) carryin -> carryout: 0.186 ns
-     8.855 ns net_78955 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[6]$2)
-        lc40_19_17_4 (LogicCell40) carryin -> carryout: 0.186 ns
-     9.041 ns net_78961 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[7]$2)
-        lc40_19_17_5 (LogicCell40) carryin -> carryout: 0.186 ns
-     9.228 ns net_78967 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[8]$2)
-        lc40_19_17_6 (LogicCell40) carryin -> carryout: 0.186 ns
-     9.414 ns net_78973 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[9]$2)
-        lc40_19_17_7 (LogicCell40) carryin -> carryout: 0.186 ns
-     9.600 ns net_78979 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[10]$2)
-        t98 (ICE_CARRY_IN_MUX) carryinitin -> carryinitout: 0.289 ns
-        lc40_19_18_0 (LogicCell40) carryin -> carryout: 0.186 ns
-    10.075 ns net_79060 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[11]$2)
-        lc40_19_18_1 (LogicCell40) carryin -> carryout: 0.186 ns
-    10.261 ns net_79066 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[12]$2)
-        lc40_19_18_2 (LogicCell40) carryin -> carryout: 0.186 ns
-    10.447 ns net_79072 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[13]$2)
-        lc40_19_18_3 (LogicCell40) carryin -> carryout: 0.186 ns
-    10.633 ns net_79078 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[14]$2)
-        lc40_19_18_4 (LogicCell40) carryin -> carryout: 0.186 ns
-    10.819 ns net_79084 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[15]$2)
-        lc40_19_18_5 (LogicCell40) carryin -> carryout: 0.186 ns
-    11.006 ns net_79090 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[16]$2)
-        lc40_19_18_6 (LogicCell40) carryin -> carryout: 0.186 ns
-    11.192 ns net_79096 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[17]$2)
-        lc40_19_18_7 (LogicCell40) carryin -> carryout: 0.186 ns
-    11.378 ns net_79102 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[18]$2)
-        t100 (ICE_CARRY_IN_MUX) carryinitin -> carryinitout: 0.289 ns
-        lc40_19_19_0 (LogicCell40) carryin -> carryout: 0.186 ns
-    11.853 ns net_79183 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[19]$2)
-        lc40_19_19_1 (LogicCell40) carryin -> carryout: 0.186 ns
-    12.039 ns net_79189 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[20]$2)
-        lc40_19_19_2 (LogicCell40) carryin -> carryout: 0.186 ns
-    12.225 ns net_79195 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[21]$2)
-        lc40_19_19_3 (LogicCell40) carryin -> carryout: 0.186 ns
-    12.411 ns net_79201 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[22]$2)
-        lc40_19_19_4 (LogicCell40) carryin -> carryout: 0.186 ns
-    12.597 ns net_79207 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[23]$2)
-        lc40_19_19_5 (LogicCell40) carryin -> carryout: 0.186 ns
-    12.784 ns net_79213 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[24]$2)
-        lc40_19_19_6 (LogicCell40) carryin -> carryout: 0.186 ns
-    12.970 ns net_79219 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[25]$2)
-        lc40_19_19_7 (LogicCell40) carryin -> carryout: 0.186 ns
-    13.156 ns net_79225 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[26]$2)
-        t104 (ICE_CARRY_IN_MUX) carryinitin -> carryinitout: 0.289 ns
-        lc40_19_20_0 (LogicCell40) carryin -> carryout: 0.186 ns
-    13.631 ns net_79306 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[27]$2)
-        inmux_19_20_79306_79316 (InMux) I -> O: 0.382 ns
-        lc40_19_20_1 (LogicCell40) in3 -> lcout: 0.465 ns
-    14.479 ns net_75157 ($techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[27])
-        odrv_19_20_75157_58982 (Odrv12) I -> O: 0.796 ns
-        t417 (LocalMux) I -> O: 0.486 ns
-        inmux_17_20_71135_71169 (InMux) I -> O: 0.382 ns
-        lc40_17_20_2 (LogicCell40) in3 -> lcout: 0.465 ns
-    16.608 ns net_67005 ($abc$31931$n149)
-        odrv_17_20_67005_69984 (Odrv12) I -> O: 0.796 ns
-        t335 (LocalMux) I -> O: 0.486 ns
-        inmux_17_18_70891_70922 (InMux) I -> O: 0.382 ns
-        t77 (CascadeMux) I -> O: 0.000 ns
-        lc40_17_18_2 (LogicCell40) in2 -> lcout: 0.558 ns
-    18.831 ns net_66759 ($abc$31931$n142_1)
-        t311 (LocalMux) I -> O: 0.486 ns
-        inmux_17_18_70885_70916 (InMux) I -> O: 0.382 ns
-        t76 (CascadeMux) I -> O: 0.000 ns
-        lc40_17_18_1 (LogicCell40) in2 -> lcout: 0.558 ns
-    20.257 ns net_66758 ($abc$31931$n150_1)
-        t310 (LocalMux) I -> O: 0.486 ns
-        inmux_17_18_70884_70951 (InMux) I -> O: 0.382 ns
-        lc40_17_18_7 (LogicCell40) in1 -> lcout: 0.589 ns
-    21.715 ns net_66764 ($abc$31931$n155_1)
-        odrv_17_18_66764_26793 (Odrv12) I -> O: 0.796 ns
-        t316 (LocalMux) I -> O: 0.486 ns
-        inmux_15_18_62724_62791 (InMux) I -> O: 0.382 ns
-        lc40_15_18_6 (LogicCell40) in0 -> lcout: 0.662 ns
-    24.040 ns net_58610 ($abc$31931$n156_1)
-        t256 (LocalMux) I -> O: 0.486 ns
-        inmux_15_19_62859_62905 (InMux) I -> O: 0.382 ns
-        lc40_15_19_4 (LogicCell40) in3 -> lcout: 0.465 ns
-    25.374 ns net_58731 ($abc$31931$n157_1)
-        t258 (LocalMux) I -> O: 0.486 ns
-        inmux_15_19_62849_62921 (InMux) I -> O: 0.382 ns
-        lc40_15_19_7 (LogicCell40) in1 -> lcout: 0.589 ns
-    26.831 ns net_58734 ($abc$31931$n158_1)
-        t261 (LocalMux) I -> O: 0.486 ns
-        inmux_16_20_67075_67120 (InMux) I -> O: 0.382 ns
-        lc40_16_20_7 (LogicCell40) in1 -> lcout: 0.589 ns
-    28.289 ns net_62934 (LED$2)
-        odrv_16_20_62934_22962 (Odrv12) I -> O: 0.796 ns
-        t266 (Span12Mux_v12) I -> O: 0.796 ns
-        t265 (Sp12to4) I -> O: 0.662 ns
-        t264 (LocalMux) I -> O: 0.486 ns
-        inmux_5_33_24484_24477 (IoInMux) I -> O: 0.382 ns
-    31.411 ns net_24477 (LED$2)
-        pre_io_5_33_1 (PRE_IO) DOUT0 [setup]: 0.103 ns
-    31.514 ns io_pad_5_33_1_din
+        lc40_6_11_4 (LogicCell40) [clk] -> lcout: 0.896 ns
+     0.896 ns net_21727 (r_spi_master_tx_counter[2])
+        odrv_6_11_21727_1229 (Odrv12) I -> O: 0.796 ns
+        t4800 (Sp12to4) I -> O: 0.662 ns
+        t4803 (Span4Mux_v4) I -> O: 0.548 ns
+        t4806 (Span4Mux_v4) I -> O: 0.548 ns
+        t4809 (Span4Mux_v4) I -> O: 0.548 ns
+        t4815 (Span4Mux_v4) I -> O: 0.548 ns
+        t4814 (Span4Mux_h4) I -> O: 0.465 ns
+        t4821 (Span4Mux_v4) I -> O: 0.548 ns
+        t4842 (Span4Mux_h4) I -> O: 0.465 ns
+        t4841 (Span4Mux_h4) I -> O: 0.465 ns
+        t4840 (Span4Mux_v4) I -> O: 0.548 ns
+        t4839 (Span4Mux_h4) I -> O: 0.465 ns
+        t4838 (Span4Mux_v4) I -> O: 0.548 ns
+        t4837 (Span4Mux_h4) I -> O: 0.465 ns
+        t4836 (Span4Mux_v4) I -> O: 0.548 ns
+        t4835 (Span4Mux_h4) I -> O: 0.465 ns
+        t4834 (Span4Mux_v4) I -> O: 0.548 ns
+        t4919 (Span4Mux_h4) I -> O: 0.465 ns
+        t4918 (Span4Mux_v4) I -> O: 0.548 ns
+        t5036 (Span4Mux_h4) I -> O: 0.465 ns
+        t5070 (Span4Mux_v4) I -> O: 0.548 ns
+        t5069 (Span4Mux_h4) I -> O: 0.465 ns
+        t5079 (Span4Mux_v4) I -> O: 0.548 ns
+        t5078 (Span4Mux_v4) I -> O: 0.548 ns
+        t5077 (Span4Mux_v4) I -> O: 0.548 ns
+        t5076 (Span4Mux_v4) I -> O: 0.548 ns
+        t5075 (Span4Mux_v4) I -> O: 0.548 ns
+        t5085 (Span4Mux_v4) I -> O: 0.548 ns
+        t5098 (Span4Mux_v4) I -> O: 0.548 ns
+        t5097 (LocalMux) I -> O: 0.486 ns
+        inmux_29_16_118898_118915 (InMux) I -> O: 0.382 ns
+        lc40_29_16_0 (LogicCell40) in3 -> lcout: 0.465 ns
+    17.735 ns net_114761 ($abc$41590$n5400_1)
+        odrv_29_16_114761_102997 (Odrv12) I -> O: 0.796 ns
+        t23164 (Span12Mux_h12) I -> O: 0.796 ns
+        t23163 (LocalMux) I -> O: 0.486 ns
+        inmux_14_16_58410_58441 (InMux) I -> O: 0.382 ns
+        lc40_14_16_1 (LogicCell40) in3 -> lcout: 0.465 ns
+    20.660 ns net_54282 ($abc$41590$n5401_1)
+        odrv_14_16_54282_58497 (Odrv4) I -> O: 0.548 ns
+        t14179 (LocalMux) I -> O: 0.486 ns
+        inmux_17_16_70652_70663 (InMux) I -> O: 0.382 ns
+        lc40_17_16_0 (LogicCell40) in1 -> lcout: 0.589 ns
+    22.666 ns net_66511 ($abc$41590$n5402_1)
+        odrv_17_16_66511_62580 (Odrv4) I -> O: 0.548 ns
+        t15243 (Span4Mux_v4) I -> O: 0.548 ns
+        t15242 (Span4Mux_v4) I -> O: 0.548 ns
+        t15241 (LocalMux) I -> O: 0.486 ns
+        inmux_19_20_79284_79315 (InMux) I -> O: 0.382 ns
+        t1458 (CascadeMux) I -> O: 0.000 ns
+        lc40_19_20_1 (LogicCell40) in2 -> lcout: 0.558 ns
+    25.736 ns net_75157 ($abc$41590$n5403_1)
+        odrv_19_20_75157_79013 (Odrv4) I -> O: 0.548 ns
+        t16864 (Span4Mux_h4) I -> O: 0.465 ns
+        t16863 (Span4Mux_v4) I -> O: 0.548 ns
+        t16862 (LocalMux) I -> O: 0.486 ns
+        inmux_16_15_66435_66464 (InMux) I -> O: 0.382 ns
+        t1096 (CascadeMux) I -> O: 0.000 ns
+        lc40_16_15_0 (LogicCell40) in2 -> lcout: 0.558 ns
+    28.723 ns net_62312 ($abc$41590$n4434_1)
+        odrv_16_15_62312_62091 (Odrv4) I -> O: 0.548 ns
+        t14944 (LocalMux) I -> O: 0.486 ns
+        inmux_16_12_66081_66120 (InMux) I -> O: 0.382 ns
+        lc40_16_12_4 (LogicCell40) in3 -> lcout: 0.465 ns
+    30.604 ns net_61947 ($abc$41590$n5321_1)
+        odrv_16_12_61947_61730 (Odrv4) I -> O: 0.548 ns
+        t14921 (Span4Mux_h4) I -> O: 0.465 ns
+        t14920 (LocalMux) I -> O: 0.486 ns
+        inmux_13_12_53842_53895 (InMux) I -> O: 0.382 ns
+        t766 (CascadeMux) I -> O: 0.000 ns
+    32.486 ns net_53895_cascademuxed
+        lc40_13_12_5 (LogicCell40) in2 [setup]: 0.475 ns
+    32.961 ns net_49717 (r_temp_tx[7])
 
 Resolvable net names on path:
-     0.896 ns ..  1.764 ns blink_counter[24]
-     2.333 ns ..  2.715 ns $abc$31931$n177$2
-     3.180 ns ..  4.049 ns $abc$31931$n177
-     4.607 ns ..  6.023 ns $abc$31931$n85_1
-     6.685 ns ..  8.101 ns $abc$31931$n69
-     8.483 ns ..  8.483 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[4]$2
-     8.669 ns ..  8.669 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[5]$2
-     8.855 ns ..  8.855 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[6]$2
-     9.041 ns ..  9.041 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[7]$2
-     9.228 ns ..  9.228 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[8]$2
-     9.414 ns ..  9.414 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[9]$2
-     9.600 ns ..  9.889 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[10]$2
-    10.075 ns .. 10.075 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[11]$2
-    10.261 ns .. 10.261 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[12]$2
-    10.447 ns .. 10.447 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[13]$2
-    10.633 ns .. 10.633 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[14]$2
-    10.819 ns .. 10.819 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[15]$2
-    11.006 ns .. 11.006 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[16]$2
-    11.192 ns .. 11.192 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[17]$2
-    11.378 ns .. 11.667 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[18]$2
-    11.853 ns .. 11.853 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[19]$2
-    12.039 ns .. 12.039 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[20]$2
-    12.225 ns .. 12.225 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[21]$2
-    12.411 ns .. 12.411 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[22]$2
-    12.597 ns .. 12.597 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[23]$2
-    12.784 ns .. 12.784 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[24]$2
-    12.970 ns .. 12.970 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[25]$2
-    13.156 ns .. 13.445 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[26]$2
-    13.631 ns .. 14.014 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[27]$2
-    14.479 ns .. 16.143 ns $techmap$techmap$mod$top.v:27$3.div_mod.div_mod_u.$sub$C:\Users\Michal-Dell\.apio\packages\toolchain-icestorm\bin\../share/yosys/techmap.v:302$1269.$auto$alumacc.cc:474:replace_alu$1498.C[27]
-    16.608 ns .. 18.272 ns $abc$31931$n149
-    18.831 ns .. 19.699 ns $abc$31931$n142_1
-    20.257 ns .. 21.125 ns $abc$31931$n150_1
-    21.715 ns .. 23.379 ns $abc$31931$n155_1
-    24.040 ns .. 24.909 ns $abc$31931$n156_1
-    25.374 ns .. 26.242 ns $abc$31931$n157_1
-    26.831 ns .. 27.700 ns $abc$31931$n158_1
-    28.289 ns .. 31.411 ns LED$2
+     0.896 ns .. 17.270 ns r_spi_master_tx_counter[2]
+    17.735 ns .. 20.195 ns $abc$41590$n5400_1
+    20.660 ns .. 22.076 ns $abc$41590$n5401_1
+    22.666 ns .. 25.177 ns $abc$41590$n5402_1
+    25.736 ns .. 28.165 ns $abc$41590$n5403_1
+    28.723 ns .. 30.139 ns $abc$41590$n4434_1
+    30.604 ns .. 32.486 ns $abc$41590$n5321_1
+                  lcout -> r_temp_tx[7]
 
-Total number of logic levels: 39
-Total path delay: 31.51 ns (31.73 MHz)
+Total number of logic levels: 7
+Total path delay: 32.96 ns (30.34 MHz)
 

@@ -12,7 +12,7 @@ module top (
     output PIN_3,   // SPI MCU MOSI
     input PIN_4,    // SPI MCU MISO
     output PIN_5,   // SPI MCU CS
-    output PIN_6,   // SPI MCU CLK OUT
+    input PIN_6,   // DATA SEND OUT ACK
 
     input PIN_7,    // ADC RVS
     input PIN_8,    // SPI ADC MISO
@@ -140,8 +140,8 @@ module top (
 
 
     // ADC range state reg for current range and previos range
-    reg [3:0] r_adc_master_range = ADC_RANGE_MA;
-    reg [3:0] r_adc_master_last_range = ADC_RANGE_MA;
+    reg [2:0] r_adc_master_range = ADC_RANGE_MA;
+    reg [2:0] r_adc_master_last_range = ADC_RANGE_MA;
 
     // ADC last/currently measured value, used for checking ranges
     reg [31:0] r_adc_master_last_measured_value = 0;
@@ -190,8 +190,8 @@ module top (
 
     // define testing SPI Interface
     parameter SPI_MODE_ADC = 0; // CPOL = 0, CPHA = 0 ===> compatible with STM basic settings
-    parameter CLKS_PER_HALF_BIT_ADC = 6;  // select 3=10MHz for 60MHz clk source
-    parameter CS_CLK_DELAY_ADC = 8;  // select 4 for 60MHz clk source
+    parameter CLKS_PER_HALF_BIT_ADC = 3;  // select 3=10MHz for 60MHz clk source
+    parameter CS_CLK_DELAY_ADC = 4;  // select 4 for 60MHz clk source
     parameter MAX_BYTES_PER_CS_ADC = 4; // send maximum of 4 bytes before changing CS line
 
     // ADC conversion state machine states
@@ -237,8 +237,17 @@ module top (
     wire [7:0] w_temp_adc_rx;
 
     reg [7:0] r_adc_sample_delay = 0;
-    localparam  ADC_SAMPLE_DELAY = 90; // needed approx. 666ns based on ADS8691 datasheet; select 45=750ns for 60MHz clk source
-    localparam  ADC_CS_CONVS_DELAY = 20; // added so cs line will be Dig. LOW before conversion start; select 10=166,67ns for 60MHz clk source
+    localparam  ADC_SAMPLE_DELAY = 45; // needed approx. 666ns based on ADS8691 datasheet; select 45=750ns for 60MHz clk source
+    localparam  ADC_CS_CONVS_DELAY = 10; // added so cs line will be Dig. LOW before conversion start; select 10=166,67ns for 60MHz clk source
+
+    // define how many samples will be taken, before adding to mcu buffer
+    // simply allow higher sampling rate for range changing, but send to MCU with lower sample sate
+    localparam  ADC_MEASUREMENT_UNDERSAMPLE = 5;
+
+    reg [3:0] r_adc_measure_under_sample = 0;
+
+    // indication for stard sending data out to MCU, 0=doNOT send data, 1 = MCU is ready for data
+    wire w_adc_master_mcu_transfer_ready;
 
     SPI_Master_With_Single_CS
     #(
@@ -283,8 +292,8 @@ module top (
     //***************************************************************************************//
     // define testing SPI Interface
     parameter SPI_MODE = 0; // CPOL = 0, CPHA = 0 ===> compatible with STM basic settings
-    parameter CLKS_PER_HALF_BIT = 6;  // select 3=10MHz for 60MHz clk source
-    parameter CS_CLK_DELAY = 50;  // select 25 for 60MHz clk source
+    parameter CLKS_PER_HALF_BIT = 3;  // select 3=10MHz for 60MHz clk source
+    parameter CS_CLK_DELAY = 25;  // select 25 for 60MHz clk source
     //parameter MAX_BYTES_PER_CS = 40; // send maximum of 4 bytes before changing CS line
     parameter MAX_BYTES_PER_CS = ADC_READINGS*4; // send maximum of 4 bytes before changing CS line
 
@@ -386,12 +395,12 @@ module top (
             r_spi_master_reset <= 1;
           end // end if
           else begin
-            r_spi_master_tx_counter <= 0;
-            r_spi_master_rx_counter <= 0;
+            //r_spi_master_tx_counter <= 0;
+            //r_spi_master_rx_counter <= 0;
 
-            r_spi_master_tx_data_count <= 0;
+            //r_spi_master_tx_data_count <= 0;
 
-            w_led_1 <= 1;
+            //w_led_1 <= 1;
 
             r_spi_master_state <= SPI_INITIALIZED;
 
@@ -407,7 +416,7 @@ module top (
 
           w_led_2 <= 1;
 
-          if (w_spi_master_tx_data_ready) begin
+          if (w_spi_master_tx_data_ready && w_adc_master_mcu_transfer_ready) begin
             w_led_3 <= 1;
             r_spi_master_state <= SPI_READY;
           end // end if
@@ -415,24 +424,40 @@ module top (
         end // end case statement
 
         SPI_READY:  begin
-          r_spi_master_tx_data_count <= ADC_READINGS*4;
-          w_led_4 <= 1;
 
           if(r_spi_master_state != SPI_TRANSFERING) begin
+            r_spi_master_tx_data_count <= ADC_READINGS*4;
             r_spi_master_state <= SPI_TRANSFERING;
+            w_spi_master_tx_data_ready <= 0;
           end // end if
 
         end // end case statement
 
         SPI_TRANSFERING:  begin
 
-          w_spi_master_tx_data_ready <= 0;
-
           // handling sending data
           if( (r_spi_master_tx_dv == 0) && (w_spi_master_tx_ready) ) begin
 
             // sending bytes to MCU, tx counter selects which byte is send
-            if( (r_spi_master_tx_counter >= 0) && (r_spi_master_tx_counter < (ADC_READINGS*4) ) ) begin
+            if( (r_spi_master_tx_counter < (ADC_READINGS*4) ) && (r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1) ) begin
+              r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [r_spi_master_tx_counter];
+              r_spi_master_tx_dv <= 1;
+            end
+            if( (r_spi_master_tx_counter < (ADC_READINGS*4) ) && (r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_2) ) begin
+              r_temp_tx [7:0] <= r_adc_master_tx_buffer_1 [r_spi_master_tx_counter];
+              r_spi_master_tx_dv <= 1;
+            end
+
+            r_spi_master_tx_counter <= r_spi_master_tx_counter + 1;
+
+            if ( (r_spi_master_tx_counter == (ADC_READINGS*4) ) ) begin
+              r_spi_master_state <= SPI_INITIALIZED;
+            end
+
+
+            //if( (r_spi_master_tx_counter >= 0) && (r_spi_master_tx_counter < (ADC_READINGS*4) ) ) begin
+            /*
+            if( (r_spi_master_tx_counter < (ADC_READINGS*4) ) ) begin
               if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
                 r_temp_tx [7:0] <= r_adc_master_tx_buffer_2 [r_spi_master_tx_counter];
                 //r_temp_tx [7:0] <= r_spi_master_tx_counter*2;
@@ -450,8 +475,10 @@ module top (
             else begin
               r_spi_master_state <= SPI_INITIALIZED;
             end // end else
+            */
 
           end // end if
+
           else begin
             r_spi_master_tx_dv <= 0;
           end // end else
@@ -460,6 +487,21 @@ module top (
           if(w_spi_master_rx_dv) begin
 
             // for receiving up to 4 Bytes
+            case (w_spi_master_rx_data_count)
+              0:  begin
+                r_spi_master_rx_data [7:0] <= w_temp_rx [7:0];
+              end
+              1:  begin
+                r_spi_master_rx_data [15:8] <= w_temp_rx [7:0];
+              end
+              2:  begin
+                r_spi_master_rx_data [23:16] <= w_temp_rx [7:0];
+              end
+              3:  begin
+                r_spi_master_rx_data [31:24] <= w_temp_rx [7:0];
+              end
+            endcase
+            /*
             if( w_spi_master_rx_data_count == 0) begin
               r_spi_master_rx_data [7:0] <= w_temp_rx [7:0];
             end // end if
@@ -472,6 +514,7 @@ module top (
             else if( w_spi_master_rx_data_count == 3) begin
               r_spi_master_rx_data [31:24] <= w_temp_rx [7:0];
             end // end if
+            */
 
           end // end if RX
         end // end case statement
@@ -491,7 +534,7 @@ module top (
       // start spi transfer after 1mil clks, approx. 62,5 ms
       // 60MHz clock approx. 16,67 ns per clock >>> 100 us is about 6000 clocks
 
-      if(r_cycle_counter >= 12000 ) begin
+      if(r_cycle_counter >= 1200 ) begin
         //w_spi_master_tx_data_ready <= 1;
         r_adc_master_conversion <= 1;
         r_cycle_counter <= 0;
@@ -576,6 +619,25 @@ module top (
           //if(w_spi_master_adc_rvs && w_spi_master_rx_dv)  begin
           if(w_spi_master_adc_rx_dv)  begin
             // for receiving up to 4 Bytes
+            case (w_spi_master_adc_rx_data_count)
+              0:  begin
+                r_spi_master_adc_rx_data [7:0] <= w_temp_adc_rx [7:0];
+                r_spi_master_adc_rx_counter <= 1;
+              end
+              1:  begin
+                r_spi_master_adc_rx_data [15:8] <= w_temp_adc_rx [7:0];
+                r_spi_master_adc_rx_counter <= 2;
+              end
+              2:  begin
+                r_spi_master_adc_rx_data [23:16] <= w_temp_adc_rx [7:0];
+                r_spi_master_adc_rx_counter <= 3;
+              end
+              3:  begin
+                r_spi_master_adc_rx_data [31:24] <= w_temp_adc_rx [7:0];
+                r_spi_master_adc_rx_counter <= 4;
+              end
+            endcase
+            /*
             if( w_spi_master_adc_rx_data_count == 0) begin
               r_spi_master_adc_rx_data [7:0] <= w_temp_adc_rx [7:0];
               //r_spi_master_adc_rx_data [7:0] <= 55;
@@ -600,6 +662,8 @@ module top (
               r_spi_master_adc_rx_counter <= 4;
               //r_spi_master_adc_rx_counter <= r_spi_master_adc_rx_counter + 1;
             end // end if
+            */
+
 
           end // end ADC RX
 
@@ -612,29 +676,29 @@ module top (
 
               0:  begin // end case statement
                 r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [31:24];
-                //r_spi_master_adc_tx_counter <= 1;
-                r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
+                r_spi_master_adc_tx_counter <= 1;
+                //r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
                 r_spi_master_adc_tx_dv <= 1;
               end // end case statement
 
               1:  begin
                 r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [23:16];
-                //r_spi_master_adc_tx_counter <= 2;
-                r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
+                r_spi_master_adc_tx_counter <= 2;
+                //r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
                 r_spi_master_adc_tx_dv <= 1;
               end // end case statement
 
               2:  begin
                 r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [15:8];
-                //r_spi_master_adc_tx_counter <= 3;
-                r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
+                r_spi_master_adc_tx_counter <= 3;
+                //r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
                 r_spi_master_adc_tx_dv <= 1;
               end // end case statement
 
               3:  begin
                 r_temp_adc_tx [7:0] <= r_spi_master_adc_tx_data [7:0];
-                //r_spi_master_adc_tx_counter <= 4;
-                r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
+                r_spi_master_adc_tx_counter <= 4;
+                //r_spi_master_adc_tx_counter <= r_spi_master_adc_tx_counter + 1;
                 r_spi_master_adc_tx_dv <= 1;
 
                 // finish sending config data
@@ -664,7 +728,11 @@ module top (
           //if( (r_spi_master_adc_tx_data_count == r_spi_master_adc_rx_counter) && (r_spi_master_state == SPI_INITIALIZED) )  begin
           if( (r_spi_master_adc_tx_data_count == r_spi_master_adc_rx_counter) && (r_spi_master_adc_rx_counter == 4) )  begin
 
+            // convert measured data into final value
             r_adc_master_rx_buffer_1 <= (r_spi_master_adc_rx_data [23:16] >> 6) | (r_spi_master_adc_rx_data [15:8] << 2) | (r_spi_master_adc_rx_data [7:0] << 10);
+
+            // enter data about current measuring range
+            r_adc_master_rx_buffer_1 [31:29] <= r_adc_master_last_range;
 
             // in case of 2 buffer for instant ADC measurements
             // currently not used as it complicates things further more and
@@ -704,30 +772,9 @@ module top (
 
         ADC_RANGE_STATE_CHECKED:  begin
 
-          if ( (r_adc_master_rx_reading_counter >= 0) && (r_adc_master_rx_reading_counter < ADC_READINGS) )  begin
-            /*
-            r_adc_master_tx_buffer_2 [1] <= 1;
-            r_adc_master_tx_buffer_2 [2] <= 0;
-            r_adc_master_tx_buffer_2 [3] <= 3;
-            r_adc_master_tx_buffer_2 [4] <= 0;
-            r_adc_master_tx_buffer_2 [5] <= 5;
-            r_adc_master_tx_buffer_2 [6] <= 0;
-            r_adc_master_tx_buffer_2 [7] <= 7;
-            r_adc_master_tx_buffer_2 [8] <= 0;
-            r_adc_master_tx_buffer_2 [9] <= 9;
-            r_adc_master_tx_buffer_2 [10] <= 0;
+          if ( (r_adc_master_rx_reading_counter < ADC_READINGS) && (r_adc_measure_under_sample == ADC_MEASUREMENT_UNDERSAMPLE))  begin
+          //if ( (r_adc_master_rx_reading_counter >= 0) && (r_adc_master_rx_reading_counter < ADC_READINGS) )  begin
 
-            r_adc_master_tx_buffer_1 [0] <= 0;
-            r_adc_master_tx_buffer_2 [1] <= 0;
-            r_adc_master_tx_buffer_1 [2] <= 2;
-            r_adc_master_tx_buffer_2 [3] <= 0;
-            r_adc_master_tx_buffer_1 [4] <= 4;
-            r_adc_master_tx_buffer_2 [5] <= 0;
-            r_adc_master_tx_buffer_1 [6] <= 6;
-            r_adc_master_tx_buffer_2 [7] <= 0;
-            r_adc_master_tx_buffer_1 [8] <= 8;
-            r_adc_master_tx_buffer_2 [9] <= 0;
-            */
             if(r_adc_master_tx_buffer_selector == ADC_TX_BUFFER_1)  begin
               //r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_reading_counter;
               r_adc_master_tx_buffer_2 [r_adc_master_rx_reading_counter*4] <= r_adc_master_rx_buffer_1 [31:24];
@@ -744,15 +791,16 @@ module top (
             end // end else
 
             r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
+            r_adc_measure_under_sample <= 0;
             // reset buffer so it won't interfere with range checking as it only expects measured data without range information
             //r_adc_master_rx_buffer_1 <= 0;
             //r_adc_master_rx_reading_counter <= 1;
           end // end if
           else  begin
 
-            //r_adc_master_rx_reading_counter <= r_adc_master_rx_reading_counter + 1;
             r_adc_master_rx_buffer_1 <= 0;
-            w_led_4 <= 1;
+            r_adc_measure_under_sample <= r_adc_measure_under_sample + 1;
+
           end // end else
 
           // checking for full tx buffer based on reading counter, then it changes buffer for new readings and changes tx_data_ready flag, so data will be send to MCU
@@ -777,12 +825,14 @@ module top (
         end // end case statement
 
         ADC_RANGE_STATE_UNCHECKED:  begin
+
           r_adc_master_last_range <= r_adc_master_range;
 
-          // range selection in next clock proper range will be applied
+          // range selection
+          // in next clock proper range will be applied
 
           // nA to uA
-          if(r_adc_master_last_range == ADC_RANGE_NA && r_adc_master_rx_buffer_1 >= ADC_RANGE_LIMIT_HIGH) begin
+          if(r_adc_master_last_range == ADC_RANGE_NA && r_adc_master_rx_buffer_1 [23:0] >= ADC_RANGE_LIMIT_HIGH) begin
             r_adc_master_range <= ADC_RANGE_UA;
 
             w_adc_master_range_na <= 0;
@@ -791,7 +841,7 @@ module top (
 
           end // end if
           // uA to mA
-          else if(r_adc_master_last_range == ADC_RANGE_UA && r_adc_master_rx_buffer_1 >= ADC_RANGE_LIMIT_HIGH)  begin
+          else if(r_adc_master_last_range == ADC_RANGE_UA && r_adc_master_rx_buffer_1 [23:0] >= ADC_RANGE_LIMIT_HIGH)  begin
             r_adc_master_range <= ADC_RANGE_MA;
 
             w_adc_master_range_na <= 0;
@@ -800,7 +850,7 @@ module top (
 
           end // end if
           // mA to uA
-          else if(r_adc_master_last_range == ADC_RANGE_MA && r_adc_master_rx_buffer_1 <= ADC_RANGE_LIMIT_LOW)  begin
+          else if(r_adc_master_last_range == ADC_RANGE_MA && r_adc_master_rx_buffer_1 [23:0] <= ADC_RANGE_LIMIT_LOW)  begin
             r_adc_master_range <= ADC_RANGE_UA;
 
             w_adc_master_range_na <= 0;
@@ -809,7 +859,7 @@ module top (
 
           end // end if
           // uA to nA
-          else if(r_adc_master_last_range == ADC_RANGE_UA && r_adc_master_rx_buffer_1 <= ADC_RANGE_LIMIT_LOW)  begin
+          else if(r_adc_master_last_range == ADC_RANGE_UA && r_adc_master_rx_buffer_1 [23:0] <= ADC_RANGE_LIMIT_LOW)  begin
             r_adc_master_range <= ADC_RANGE_NA;
 
             w_adc_master_range_na <= 1;
@@ -821,20 +871,26 @@ module top (
             //r_adc_master_range <= ADC_RANGE_MA;
 
             // if there is no need for change, just save current range for next iteration
-            r_adc_master_range <= r_adc_master_last_range;
-
-            //w_adc_master_range_na <= 0;
-            //w_adc_master_range_ua <= 0;
-            //w_adc_master_range_ma <= 1;
-            //r_adc_master_rx_buffer_1 [2:2] <= 1;
-            //r_adc_master_rx_buffer_1 [1:1] <= 1;
-            //r_adc_master_rx_buffer_1 [0:0] <= 1;
+            //r_adc_master_range <= r_adc_master_last_range;
 
           end // end else
 
+          /*
+          if(r_adc_master_last_range == ADC_RANGE_MA) begin
+            r_adc_master_rx_buffer_1 [31:29] <= 3'b100;
+          end
+          else if(r_adc_master_last_range == ADC_RANGE_UA)  begin
+            r_adc_master_rx_buffer_1 [31:29] <= 3'b010;
+          end
+          else if(r_adc_master_last_range == ADC_RANGE_NA)  begin
+            r_adc_master_rx_buffer_1 [31:29] <= 3'b001;
+          end
+          */
+          /*
           r_adc_master_rx_buffer_1 [31:31] <= w_adc_master_range_ma;
           r_adc_master_rx_buffer_1 [30:30] <= w_adc_master_range_ua;
           r_adc_master_rx_buffer_1 [29:29] <= w_adc_master_range_na;
+          */
 
           r_adc_master_range_state <= ADC_RANGE_STATE_CHECKED;
 
@@ -842,18 +898,16 @@ module top (
 
         // this should never happen
         default:  begin
+          /*
           r_adc_master_range <= ADC_RANGE_MA;
 
           w_adc_master_range_na <= 0;
           w_adc_master_range_ua <= 0;
           w_adc_master_range_ma <= 1;
+          */
         end // end default case statement
 
       endcase // end case adc range state machine
-
-
-
-
 
     end  /// end always
 
@@ -863,6 +917,9 @@ module top (
     assign PIN_3 = w_spi_master_mcu_mosi;
     assign PIN_4 = w_spi_master_mcu_miso;
     assign PIN_5 = w_spi_master_mcu_cs;
+
+    // mcu transfer ready flag
+    assign PIN_6 = w_adc_master_mcu_transfer_ready;
 
     // SPI MASTER to ADC
     assign PIN_7 = w_spi_master_adc_rvs;
@@ -895,9 +952,9 @@ module top (
     assign PIN_13 = w_spi_master_tx_data_ready;
     */
     //assign PIN_13 = w_spi_master_adc_tx_ready;
-    assign PIN_13 = w_spi_master_tx_data_ready;
+    //assign PIN_13 = w_spi_master_tx_data_ready;
     //assign PIN_12 = r_spi_master_adc_tx_dv;
 
-    assign PIN_1 = w_clk_240mhz;
+    //assign PIN_1 = w_clk_240mhz;
 
 endmodule
